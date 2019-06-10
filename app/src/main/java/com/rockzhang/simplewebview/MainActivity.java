@@ -34,6 +34,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 import static com.rockzhang.simplewebview.R.id.url;
 
 public class MainActivity extends AppCompatActivity
@@ -42,6 +49,7 @@ public class MainActivity extends AppCompatActivity
     private Button   mBtnGo;
     private EditText mEditUrl;
     private WebView  mWebView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -52,16 +60,70 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
 
         initView();
+
+
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener()
         {
             @Override
             public void onClick(View view)
             {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAction("Action", null).show();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        certVerify();
+                    }
+                }).start();
             }
         });
+    }
+
+    private void certVerify()
+    {
+        String content = "abc=abc";
+        //String cp_url = "https://szsdren.com";
+        String cp_url = "https://ec2-52-80-37-4.cn-north-1.compute.amazonaws.com.cn/vivo/billings";
+
+        int               respCode       = -1;
+        HttpURLConnection httpConnection = null;
+        OutputStream      os             = null;
+        StringBuilder     responseMsg    = new StringBuilder();
+        BufferedReader    reader         = null;
+
+        try {
+            URL url = new URL(cp_url);
+            httpConnection = (HttpURLConnection) url.openConnection();
+            httpConnection.setDoOutput(true);
+            httpConnection.setRequestMethod("POST");
+            httpConnection.setConnectTimeout(15000);
+            httpConnection.setReadTimeout(15000);
+            os = httpConnection.getOutputStream(); // url地址无效时，此处会抛异常
+            os.write(content.getBytes());
+            os.flush();
+            respCode = httpConnection.getResponseCode();
+
+            if (respCode == HttpURLConnection.HTTP_OK) {// 返回码是200时才读取响应
+                reader = new BufferedReader(new InputStreamReader(httpConnection.getInputStream()));
+                String lines = "";
+
+                while ((lines = reader.readLine()) != null) {
+                    lines = new String(lines.getBytes(), "utf-8");
+                    responseMsg.append(lines);
+                }
+            }else{
+                System.out.println("not 200");
+            }
+
+            System.out.println("finish...");
+        } catch (Exception e) {// 因为可能需要失败再通知，所以这里的异常不能抛出
+            e.printStackTrace();
+        } finally {
+            try {
+                os.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void initView()
@@ -343,7 +405,12 @@ public class MainActivity extends AppCompatActivity
             public WebResourceResponse shouldInterceptRequest(WebView view, String url)
             {
                 Log.e("ROCK", "shouldInterceptRequest url " + url);
-                return super.shouldInterceptRequest(view, url);
+                WebResourceResponse resp = NetworkHandler.getInstance().msgRequestTestMethod(url);
+                if (resp == null) {
+                    return super.shouldInterceptRequest(view, url);
+                } else {
+                    return resp;
+                }
             }
 
             @Override

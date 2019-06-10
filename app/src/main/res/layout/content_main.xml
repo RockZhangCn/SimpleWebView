@@ -21,7 +21,7 @@
 
         <EditText
             android:id="@+id/url"
-            android:text="https://m.youtube.com"
+            android:text="http://browser.vivo.com.cn/client/h5/index.html"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"/>
